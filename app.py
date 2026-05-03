@@ -5,7 +5,7 @@ import google.generativeai as genai
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="BetaAnalyst Pro + AI", layout="wide", initial_sidebar_state="collapsed")
 
-# --- CSS CUSTOMIZADO PARA INTERFACE DARK MODE PROFISSIONAL ---
+# --- CSS CUSTOMIZADO PARA INTERFACE DARK MODE ---
 st.markdown("""
     <style>
     .main { background-color: #0e1117; color: #ffffff; }
@@ -19,28 +19,26 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- CONFIGURAÇÕES DAS APIs (CHAVES) ---
-# A API_FOOTBALL_KEY pode ser mantida aqui, mas a do Google agora é buscada via Secrets por segurança
+# --- CONFIGURAÇÕES DAS APIs ---
 API_FOOTBALL_KEY = "d379541faa02a4cd2b5b13ba86c23955"
+GOOGLE_AI_KEY = st.secrets.get("GOOGLE_AI_KEY")
 
-# --- Configuração do Google Gemini (CORRIGIDO PARA EVITAR ERRO 404) ---
-GOOGLE_AI_KEY = st.secrets.get("AIzaSyD27rzHGIay10g6qoNO948IQMVl9w4VLIU")
-
+# --- CONFIGURAÇÃO DO GOOGLE GEMINI (CORRIGIDO) ---
 if GOOGLE_AI_KEY:
     try:
         genai.configure(api_key=GOOGLE_AI_KEY)
-        # Atualizado para o modelo estável 1.5-flash
+        # Usando o caminho completo para evitar erro 404
         model = genai.GenerativeModel('gemini-1.5-flash')
     except Exception as e:
         st.error(f"Erro ao configurar o Gemini: {e}")
         model = None
 else:
-    st.warning("⚠️ Chave do Google Gemini não configurada nos Secrets.")
+    st.warning("⚠️ Chave do Google Gemini não encontrada nos Secrets.")
     model = None
 
 HEADERS = {'x-apisports-key': API_FOOTBALL_KEY}
 
-# --- FUNÇÕES COM SISTEMA DE CACHE ---
+# --- FUNÇÕES DE BUSCA E PROCESSAMENTO ---
 
 @st.cache_data(ttl=3600)
 def buscar_id_por_nome(nome_time):
@@ -93,7 +91,6 @@ def gerar_analise_ia(casa, fora, p_c, p_e, p_f, gols, esc, cart_c, cart_f):
     Escreva uma análise técnica curta. Recomende um mercado de valor (Ex: Over/Under, Match Odds).
     """
     try:
-        # Chamada corrigida para o modelo estável
         resposta = model.generate_content(prompt)
         return resposta.text
     except Exception as e:
@@ -120,31 +117,28 @@ if st.button("🚀 REALIZAR ANÁLISE COMPLETA"):
             s_fora = buscar_stats(id_fora)
 
             if s_casa and s_fora:
-                # 1. PROCESSAMENTO
+                # PROCESSAMENTO
                 p_casa = calcular_peso_forma(s_casa.get('form', ''))
                 p_fora = calcular_peso_forma(s_fora.get('form', ''))
 
-                # 2. GOLS
                 g_casa_base = float(s_casa.get('goals', {}).get('for', {}).get('average', {}).get('home', 0.1) or 0.1)
                 g_fora_base = float(s_fora.get('goals', {}).get('for', {}).get('average', {}).get('away', 0.1) or 0.1)
                 mg_casa = max(0.1, g_casa_base + p_casa)
                 mg_fora = max(0.1, g_fora_base + p_fora)
                 total_gols = mg_casa + mg_fora
 
-                # 3. ESCANTEIOS E CARTÕES
                 total_escanteios = float(s_casa.get('corner_kicks', {}).get('for', {}).get('average', 5.0) or 5.0) + \
                                  float(s_fora.get('corner_kicks', {}).get('for', {}).get('average', 4.5) or 4.5)
                 
                 cartoes_casa = s_casa.get('cards', {}).get('yellow', {}).get('average', '2.3')
                 cartoes_fora = s_fora.get('cards', {}).get('yellow', {}).get('average', '2.6')
 
-                # 4. PROBABILIDADES
                 soma_forcas = mg_casa + mg_fora
-                prob_casa = (mg_casa / soma_forcas) * 70  # Exemplo de distribuição
+                prob_casa = (mg_casa / soma_forcas) * 70
                 prob_fora = (mg_fora / soma_forcas) * 70
                 prob_empate = 100 - (prob_casa + prob_fora)
 
-                # --- VISUALIZAÇÃO ---
+                # VISUALIZAÇÃO
                 st.divider()
                 c_l1, c_vs, c_l2 = st.columns([2, 1, 2])
                 with c_l1:
