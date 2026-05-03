@@ -23,11 +23,11 @@ st.markdown("""
 API_FOOTBALL_KEY = "d379541faa02a4cd2b5b13ba86c23955"
 GOOGLE_AI_KEY = st.secrets.get("GOOGLE_AI_KEY")
 
-# --- CONFIGURAÇÃO DO GOOGLE GEMINI (CORRIGIDO) ---
+# --- CONFIGURAÇÃO DO GOOGLE GEMINI (FORÇANDO V1 ESTÁVEL) ---
 if GOOGLE_AI_KEY:
     try:
-        genai.configure(api_key=GOOGLE_AI_KEY)
-        # Usando o caminho completo para evitar erro 404
+        # Forçamos o uso da versão v1 para evitar o erro 404 da v1beta
+        genai.configure(api_key=GOOGLE_AI_KEY, transport='rest') 
         model = genai.GenerativeModel('gemini-1.5-flash')
     except Exception as e:
         st.error(f"Erro ao configurar o Gemini: {e}")
